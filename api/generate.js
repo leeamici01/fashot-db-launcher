@@ -18,8 +18,23 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7
+        temperature: 0.7,
+        messages: [
+          {
+            role: "user",
+            content: `Generate structured fashion content for the product: "${prompt}". Follow this exact format:
+
+1. English product description
+2. Dutch translation
+3. Editor’s note
+4. Three lifestyle scenarios
+5. Customer segment: The Fashion Conscious
+6. Fabric composition
+7. Care label instructions
+8. Accessorising suggestions from the De Bijenkorf range
+9. Suggested SEO phrases (ranked)`
+          }
+        ]
       })
     });
 
