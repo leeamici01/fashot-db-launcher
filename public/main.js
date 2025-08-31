@@ -1,34 +1,60 @@
-async function generate() {
-  const prompt = document.getElementById("prompt").value;
+document.getElementById("generate").addEventListener("click", async () => {
+  const input = document.querySelector("textarea").value;
   const output = document.getElementById("output");
   output.textContent = "⏳ Generating...";
+
   try {
-    const res = await fetch("/api/generate", {
+    // First: Try to fetch extra product data via DuckDuckGo
+    const ragRes = await fetch("/api/fetchProduct", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query: input })
     });
-    const json = await res.json();
-    output.textContent = json.result || "❌ No result.";
-  } catch (e) {
-    output.textContent = "❌ Error: " + e.message;
+
+    let ragData = null;
+
+    if (ragRes.ok) {
+      ragData = await ragRes.json();
+    }
+
+    // Second: Send structured prompt to GPT
+    const gptRes = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        prompt: input,
+        context: ragData
+      })
+    });
+
+    const gptJson = await gptRes.json();
+
+    output.textContent = gptJson.result || "⚠️ No result returned.";
+  } catch (err) {
+    output.textContent = "❌ Error: " + err.message;
   }
-}
+});
 
-function exportPDF() {
-  const content = document.getElementById("output").textContent;
-  const blob = new Blob([content], { type: "application/pdf" });
+// Optional: PDF export button
+document.getElementById("export").addEventListener("click", () => {
+  const text = document.getElementById("output").textContent;
+  const blob = new Blob([text], { type: "application/pdf" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "db_text_writer_output.pdf";
+  link.download = "description.pdf";
   link.click();
-}
+});
 
-function downloadTrace() {
-  const trace = `Prompt:\n${document.getElementById("prompt").value}\n\nOutput:\n${document.getElementById("output").textContent}`;
-  const blob = new Blob([trace], { type: "text/plain" });
+// Optional: Save .txt file
+document.getElementById("trace").addEventListener("click", () => {
+  const text = document.getElementById("output").textContent;
+  const blob = new Blob([text], { type: "text/plain" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "legal_trace.txt";
+  link.download = "text_output.txt";
   link.click();
-}
+});
