@@ -2,7 +2,8 @@ export default async function handler(req, res) {
   const cheerio = require("cheerio");
   const fetch = require("node-fetch");
 
- const query = req.method === "GET" ? req.query.query : req.body.query;
+  const query = req.method === "GET" ? req.query.query : req.body.query;
+
 
   if (!query) {
     return res.status(400).json({ error: "Missing query parameter" });
