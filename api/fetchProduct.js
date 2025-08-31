@@ -2,6 +2,10 @@ export default async function handler(req, res) {
   const cheerio = require("cheerio");
   const fetch = require("node-fetch");
 
+  if (req.method !== "GET" && req.method !== "POST") {
+  return res.status(405).json({ error: "Method Not Allowed" });
+}
+
   const query = req.method === "GET" ? req.query.query : req.body.query;
 
 
