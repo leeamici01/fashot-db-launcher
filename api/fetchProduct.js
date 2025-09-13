@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   const cheerio = require("cheerio");
   const fetch = require("node-fetch");
 
-  // ✅ Allow only GET requests
+  // ✅ Only allow GET requests
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
   const fallbackGoogleURL = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 
   try {
+    // Step 1: Try DuckDuckGo
     const searchRes = await fetch(duckURL);
     const searchHTML = await searchRes.text();
     const $ = cheerio.load(searchHTML);
@@ -26,6 +27,21 @@ export default async function handler(req, res) {
       if (href && !href.includes("duckduckgo")) links.push(href);
     });
 
+    // Step 2: Fallback to Google if no clean links
+    if (links.length === 0) {
+      console.warn("DuckDuckGo failed, trying Google");
+      const fallbackRes = await fetch(fallbackGoogleURL);
+      const fallbackHTML = await fallbackRes.text();
+      const _$ = cheerio.load(fallbackHTML);
+
+      _$("a").each((_, el) => {
+        const href = _$(el).attr("href");
+        if (href && href.startsWith("http") && !href.includes("google.com")) {
+          links.push(href);
+        }
+      });
+    }
+
     const firstLink = links.find(link =>
       link.includes(".com") &&
       !link.includes("amazon") &&
@@ -34,27 +50,31 @@ export default async function handler(req, res) {
     );
 
     if (!firstLink) {
-      return res.status(404).json({ error: "No brand site found." });
+      return res.status(404).json({ error: "No product site found from DuckDuckGo or Google." });
     }
 
+    // Step 3: Fetch the product page
     const productRes = await fetch(firstLink);
     const productHTML = await productRes.text();
     const $$ = cheerio.load(productHTML);
 
-    const title = $$("h1").first().text().trim();
-    const description = $$("p").first().text().trim();
-    const price =
-      $$("[class*=price], .product-price, .price-tag").first().text().trim() ||
-      "Price not found";
+    const title = $$("h1").first().text().trim() || "Title not found";
+    const description = $$("p").first().text().trim() || "Description not found";
+    const price = $$("[class*=price], .product-price, .price-tag").first().text().trim() || "Price not found";
 
     return res.status(200).json({
-      title: title || "Title not found",
-      description: description || "Description not found",
+      title,
+      description,
       price,
       url: firstLink
     });
+
   } catch (err) {
-    return res.status(500).json({ error: "Scrape failed", detail: err.message });
+    console.error("Scrape error:", err.message);
+    return res.status(500).json({
+      error: "Scrape failed",
+      detail: err.message
+    });
   }
 }
 
