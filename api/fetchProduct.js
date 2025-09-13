@@ -1,1 +1,57 @@
+export default async function handler(req, res) {
+  const cheerio = require("cheerio");
+  const fetch = require("node-fetch");
 
+  const query = req.method === "GET" ? req.query.query : req.body.query;
+
+  if (!query) {
+    return res.status(400).json({ error: "Missing query parameter" });
+  }
+
+  const duckURL = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  const fallbackGoogleURL = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+
+  try {
+    const searchRes = await fetch(duckURL);
+    const searchHTML = await searchRes.text();
+    const $ = cheerio.load(searchHTML);
+
+    const links = [];
+    $("a.result__a").each((_, el) => {
+      const href = $(el).attr("href");
+      if (href && !href.includes("duckduckgo.com")) links.push(href);
+    });
+
+    const firstLink = links.find(link =>
+      link.includes(".com") &&
+      !link.includes("amazon") &&
+      !link.includes("ebay") &&
+      !link.includes("zappos")
+    );
+
+    if (!firstLink) {
+      return res.status(404).json({
+        error: "No valid brand site found from DuckDuckGo.",
+        fallback: fallbackGoogleURL
+      });
+    }
+
+    const productRes = await fetch(firstLink);
+    const productHTML = await productRes.text();
+    const $$ = cheerio.load(productHTML);
+
+    const title = $$("h1").first().text().trim();
+    const description = $$("p").first().text().trim();
+    const price = $$("[class*=price], .product-price, .price-tag").first().text().trim() || "Price not found";
+
+    return res.status(200).json({
+      title: title || "Title not found",
+      description: description || "Description not found",
+      price,
+      url: firstLink
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: "Scrape failed", detail: err.message });
+  }
+}
