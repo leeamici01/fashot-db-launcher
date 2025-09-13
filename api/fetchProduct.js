@@ -2,8 +2,12 @@ export default async function handler(req, res) {
   const cheerio = require("cheerio");
   const fetch = require("node-fetch");
 
-  const query = req.method === "GET" ? req.query.query : req.body.query;
+  // ✅ Only allow GET requests
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
+  const query = req.query.query;
   if (!query) {
     return res.status(400).json({ error: "Missing query parameter" });
   }
@@ -19,7 +23,7 @@ export default async function handler(req, res) {
     const links = [];
     $("a.result__a").each((_, el) => {
       const href = $(el).attr("href");
-      if (href && !href.includes("duckduckgo.com")) links.push(href);
+      if (href && !href.includes("duckduckgo")) links.push(href);
     });
 
     const firstLink = links.find(link =>
@@ -30,10 +34,7 @@ export default async function handler(req, res) {
     );
 
     if (!firstLink) {
-      return res.status(404).json({
-        error: "No valid brand site found from DuckDuckGo.",
-        fallback: fallbackGoogleURL
-      });
+      return res.status(404).json({ error: "No brand site found." });
     }
 
     const productRes = await fetch(firstLink);
@@ -55,3 +56,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Scrape failed", detail: err.message });
   }
 }
+
