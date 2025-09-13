@@ -2,9 +2,12 @@ export default async function handler(req, res) {
   const cheerio = require("cheerio");
   const fetch = require("node-fetch");
 
-  // ✅ Accept both GET and POST
-  const query = req.method === "GET" ? req.query.query : req.body.query;
+  // ✅ Allow only GET requests
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
+  const query = req.query.query;
   if (!query) {
     return res.status(400).json({ error: "Missing query parameter" });
   }
@@ -40,7 +43,9 @@ export default async function handler(req, res) {
 
     const title = $$("h1").first().text().trim();
     const description = $$("p").first().text().trim();
-    const price = $$("[class*=price], .product-price, .price-tag").first().text().trim() || "Price not found";
+    const price =
+      $$("[class*=price], .product-price, .price-tag").first().text().trim() ||
+      "Price not found";
 
     return res.status(200).json({
       title: title || "Title not found",
@@ -48,7 +53,6 @@ export default async function handler(req, res) {
       price,
       url: firstLink
     });
-
   } catch (err) {
     return res.status(500).json({ error: "Scrape failed", detail: err.message });
   }
