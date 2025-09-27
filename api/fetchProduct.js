@@ -1,5 +1,10 @@
-import cheerio from "cheerio";
-import fetch from "node-fetch";
+{
+  "type": "module",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "node-fetch": "^2.6.7"
+  }
+}
 
 
 export default async function handler(req, res) {
