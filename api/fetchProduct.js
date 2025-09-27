@@ -1,6 +1,7 @@
-export default async function handler(req, res) {
-  import cheerio from "cheerio";
+// ✅ ESM-style imports for cheerio and node-fetch
+import cheerio from "cheerio";
 import fetch from "node-fetch";
+
 
 
   // ✅ Only allow GET requests
